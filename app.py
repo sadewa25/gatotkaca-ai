@@ -26,11 +26,13 @@ def get_sql_chain(db):
     Write only the SQL query and nothing else. Do not wrap the SQL query in any other text, not even backticks and forward slash.
     
     For example:
-    Question: how many data in the table?
+    Question: how many data you had?
     SQL Query: SELECT COUNT(wd."_id") FROM weather_data wd;
+    SQL Response: The result data we had is 225, we had a data in indonesian from 1 january 2024 to current date.
 
     Question: what is the conditions weather in date 2024-06-30?
     SQL Query: SELECT wd.conditions FROM weather_data wd where wd."date" = '2024-06-30';
+    SQL Response: Based on the date you provide the weather conditions is Mainly clear, partly cloudy, and overcast
     
     Your turn:
     
@@ -148,13 +150,13 @@ if user_query is not None and user_query.strip() != "":
     st.session_state.chat_history.append(HumanMessage(content=user_query))
     
     with st.chat_message("Human"):
-        st.markdown(user_query)
+      st.markdown(user_query)
         
     with st.chat_message("AI"):
-        response = get_response(user_query, st.session_state.db, st.session_state.chat_history)
-        st.markdown(response)
+      response = get_response(user_query, st.session_state.db, st.session_state.chat_history)
+      st.markdown(response)
         
-    if response["error"] is not None:
+    if isinstance(response, dict) and response.get("error") is not None:
       st.session_state.chat_history.append(response)
-    else :
+    else:
       st.session_state.chat_history.append(AIMessage(content=response))
