@@ -16,29 +16,10 @@ def init_database(user: str, password: str, host: str, port: str, database: str)
 def get_sql_chain(db):
   
   template = """
-    Your name is Bima, and you work as a data analyst specializing in weather conditions in Indonesia. 
-    You are interacting with a user who is asking you questions about the weather conditions based on a database.
-    Based on the table schema below, describe the table and its columns in detail.
-
+    You are a data analyst at a company. You are interacting with a user who is asking you questions about the company's database.
+    Based on the table schema below, write a SQL query that would answer the user's question. Take the conversation history into account.
+    
     <SCHEMA>public</SCHEMA>
-
-    In that schema, the table name is "weather_data". The table has 10 columns. 
-    Please provide a detailed description of each column.
-
-    1. "_id" is the primary key of the table.
-    2. "time" is the date of the weather conditions.
-    3. "wmo_code" is the weather code.
-    4. "temp_2m_max" is the maximum temperature.
-    5. "temp_2m_min" is the minimum temperature.
-    6. "sunrise" is the time of sunrise.
-    7. "sunset" is the time of sunset.
-    8. "daylight" is the duration of daylight in seconds.
-    9. "sunshine" is the duration of sunshine in seconds.
-    10. "conditions" is the weather condition name.
-
-    Please provide this information in a clear and concise manner.
-
-    Based on the query results, provide a detailed explanation of the data. Include insights and any notable patterns or anomalies.
     
     Conversation History: {chat_history}
     
@@ -49,7 +30,7 @@ def get_sql_chain(db):
     SQL Query: SELECT COUNT(wd."_id") FROM weather_data wd;
 
     Question: what is the conditions weather in date 2024-06-30?
-    SQL Query: SELECT wd.conditions FROM weather_data wd where wd."time" = '2024-06-30';
+    SQL Query: SELECT wd.conditions FROM weather_data wd where wd."date" = '2024-06-30';
     
     Your turn:
     
@@ -59,8 +40,6 @@ def get_sql_chain(db):
     
   prompt = ChatPromptTemplate.from_template(template)
   
-  # llm = ChatOpenAI(model="gpt-4-0125-preview")
-  # llm = ChatGroq(model="mixtral-8x7b-32768", temperature=0)
   llm = OllamaLLM(model="mistral", temperature=0)
   
   def get_schema(_):
@@ -78,27 +57,10 @@ def get_response(user_query: str, db: SQLDatabase, chat_history: list):
   sql_chain = get_sql_chain(db)
 
   template = """
-    Your name is Bima, and you work as a data analyst specializing in weather conditions in Indonesia. 
-    You are interacting with a user who is asking you questions about the weather conditions based on a database.
-    Based on the table schema below, describe the table and its columns in detail.
-
+    You are a data analyst at a company. You are interacting with a user who is asking you questions about the company's database.
+    Based on the table schema below, write a SQL query that would answer the user's question. Take the conversation history into account.
+    
     <SCHEMA>public</SCHEMA>
-
-    In that schema, the table name is "weather_data". The table has 10 columns. 
-    Please provide a detailed description of each column.
-
-    1. "_id" is the primary key of the table.
-    2. "time" is the date of the weather conditions.
-    3. "wmo_code" is the weather code.
-    4. "temp_2m_max" is the maximum temperature.
-    5. "temp_2m_min" is the minimum temperature.
-    6. "sunrise" is the time of sunrise.
-    7. "sunset" is the time of sunset.
-    8. "daylight" is the duration of daylight in seconds.
-    9. "sunshine" is the duration of sunshine in seconds.
-    10. "conditions" is the weather condition name.
-
-    Please provide this information in a clear and concise manner.
 
     Based on the query results, provide a detailed explanation of the data. Include insights and any notable patterns or anomalies.
 
@@ -113,29 +75,36 @@ def get_response(user_query: str, db: SQLDatabase, chat_history: list):
   
   prompt = ChatPromptTemplate.from_template(template)
   
-  # llm = ChatOpenAI(model="gpt-4-0125-preview")
-  # llm = ChatGroq(model="mixtral-8x7b-32768", temperature=0)
   llm = OllamaLLM(model="mistral", temperature=0)
   
-  chain = (
-    RunnablePassthrough.assign(query=sql_chain).assign(
-      schema=lambda _: db.get_table_info(),
-      response=lambda vars: db.run(vars["query"]),
-    )
-    | prompt
-    | llm
-    | StrOutputParser()
-  )
-  
-  return chain.invoke({
-    "question": user_query,
-    "chat_history": chat_history,
-  })
-    
-  
+  try:
+      chain = (
+          RunnablePassthrough.assign(query=sql_chain).assign(
+              schema=lambda _: db.get_table_info(),
+              response=lambda vars: db.run(vars["query"]),
+          )
+          | prompt
+          | llm
+          | StrOutputParser()
+      )
+
+      # Ensure chat_history is a list of stringss
+      chat_history = [str(item) for item in chat_history]
+
+      result = chain.invoke({
+          "question": user_query,
+          "chat_history": chat_history,
+      })
+  except Exception as e:
+      # Handle the error (e.g., log it, return a default response, etc.)
+      print(f"An error occurred: {e}")
+      result = {"error": "An error occurred while processing your request."}
+
+  return result
+
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
-      AIMessage(content="Hello! I'm a SQL assistant. Ask me anything about your database."),
+        AIMessage(content="Hello! I'm a SQL assistant. Ask me anything about your database."),
     ]
 
 load_dotenv()
@@ -152,7 +121,6 @@ with st.sidebar:
     st.text_input("Port", value="5432", key="Port")
     st.text_input("User", value="sadewawicak", key="User")
     st.text_input("Password", type="password", value="postgres", key="Password")
-    # st.text_input("Database", value="db_sidita_v10", key="Database")
     st.text_input("Database", value="db_daily_weather", key="Database")
     
     if st.button("Connect"):
@@ -186,4 +154,7 @@ if user_query is not None and user_query.strip() != "":
         response = get_response(user_query, st.session_state.db, st.session_state.chat_history)
         st.markdown(response)
         
-    st.session_state.chat_history.append(AIMessage(content=response))
+    if response["error"] is not None:
+      st.session_state.chat_history.append(response)
+    else :
+      st.session_state.chat_history.append(AIMessage(content=response))
