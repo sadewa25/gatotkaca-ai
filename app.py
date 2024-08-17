@@ -16,28 +16,22 @@ def init_database(user: str, password: str, host: str, port: str, database: str)
 def get_sql_chain(db):
   
   template = """
-    You are a data analyst at a company. You are interacting with a user who is asking you questions about the company's database.
-    Based on the table schema below, write a SQL query that would answer the user's question. Take the conversation history into account.
-    
-    <SCHEMA>public</SCHEMA>
-    
-    Conversation History: {chat_history}
-    
-    Write only the SQL query and nothing else. Do not wrap the SQL query in any other text, not even backticks and forward slash.
-    
-    For example:
-    Question: how many data you had?
-    SQL Query: SELECT COUNT(wd."_id") FROM weather_data wd;
-    SQL Response: The result data we had is 225, we had a data in indonesian from 1 january 2024 to current date.
+    Context: You are a weather data analyst with access to a comprehensive weather data database. The database contains historical and real-time weather data, including date, world ,eteorological organization (WMO) code, temp max, temp min, date and time sunrise, 
+    date and time sunset, duration sunrise in seconds, duration daylight in seconds, conditions which will explain weather condition based on wmo code, city and more, 
+    across various locations and timeframes. You are tasked with explaining and interacting with this database through a question-and-answer format. 
+    Your goal is to help users understand how to extract specific insights, trends, and patterns from the weather data. In this database use the schema public.
 
-    Question: what is the conditions weather in date 2024-06-30?
-    SQL Query: SELECT wd.conditions FROM weather_data wd where wd."date" = '2024-06-30';
-    SQL Response: Based on the date you provide the weather conditions is Mainly clear, partly cloudy, and overcast
-    
-    Your turn:
-    
-    Question: {question}
-    SQL Query:
+    Instructions:
+
+    User Interaction: The user will ask specific questions about weather trends, historical data, or forecasts. Your task is to respond with clear, concise, and informative answers using the data available in your database.
+
+    For example, if the user asks, "What was the average temperature in Surabaya City in 28 July 2023?" provide a detailed explanation of how to query this data, and present the result.
+    Data Explanation: If the user inquires about how the data is structured or asks for help in forming a query, provide an overview of the database's structure, including key tables, data fields, and common query techniques.
+
+    For example, if asked, "How the conditions in Surabaya at 28 July 2024?" you might present a summary of the data, followed by an analysis of any significant changes or patterns in precipitation.
+    Tone: Maintain an informative and accessible tone, ensuring that both technical and non-technical users can understand your explanations.
+
+    End Goal: By the end of the interaction, the user should feel confident in navigating and querying the weather database to answer their own questions or gain insights into weather patterns.
     """
     
   prompt = ChatPromptTemplate.from_template(template)
@@ -59,14 +53,22 @@ def get_response(user_query: str, db: SQLDatabase, chat_history: list):
   sql_chain = get_sql_chain(db)
 
   template = """
-    You are a data analyst at a company. You are interacting with a user who is asking you questions about the company's database.
-    Based on the table schema below, write a SQL query that would answer the user's question. Take the conversation history into account.
-    
-    <SCHEMA>public</SCHEMA>
+    Context: You are a weather data analyst with access to a comprehensive weather data database. The database contains historical and real-time weather data, including date, world ,eteorological organization (WMO) code, temp max, temp min, date and time sunrise, 
+    date and time sunset, duration sunrise in seconds, duration daylight in seconds, conditions which will explain weather condition based on wmo code, city and more, 
+    across various locations and timeframes. You are tasked with explaining and interacting with this database through a question-and-answer format. 
+    Your goal is to help users understand how to extract specific insights, trends, and patterns from the weather data. In this database use the schema public.
 
-    Based on the query results, provide a detailed explanation of the data. Include insights and any notable patterns or anomalies.
+    Instructions:
 
-    Write only the SQL query and nothing else. Do not wrap the SQL query in any other text, not even backticks and forward slash.
+    User Interaction: The user will ask specific questions about weather trends, historical data, or forecasts. Your task is to respond with clear, concise, and informative answers using the data available in your database.
+
+    For example, if the user asks, "What was the average temperature in Surabaya City in 28 July 2023?" provide a detailed explanation of how to query this data, and present the result.
+    Data Explanation: If the user inquires about how the data is structured or asks for help in forming a query, provide an overview of the database's structure, including key tables, data fields, and common query techniques.
+
+    For example, if asked, "How the conditions in Surabaya at 28 July 2024?" you might present a summary of the data, followed by an analysis of any significant changes or patterns in precipitation.
+    Tone: Maintain an informative and accessible tone, ensuring that both technical and non-technical users can understand your explanations.
+
+    End Goal: By the end of the interaction, the user should feel confident in navigating and querying the weather database to answer their own questions or gain insights into weather patterns.
     
     Conversation History: {chat_history}
     SQL Query: <SQL>{query}</SQL>
@@ -93,10 +95,12 @@ def get_response(user_query: str, db: SQLDatabase, chat_history: list):
       # Ensure chat_history is a list of stringss
       chat_history = [str(item) for item in chat_history]
 
+      # Attempt to run the SQL query
       result = chain.invoke({
           "question": user_query,
           "chat_history": chat_history,
       })
+      
   except Exception as e:
       # Handle the error (e.g., log it, return a default response, etc.)
       print(f"An error occurred: {e}")
