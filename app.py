@@ -127,7 +127,7 @@ with st.sidebar:
     st.text_input("Port", value="5432", key="Port")
     st.text_input("User", value="sadewawicak", key="User")
     st.text_input("Password", type="password", value="postgres", key="Password")
-    st.text_input("Database", value="db_daily_weather", key="Database")
+    st.text_input("Database", value="db_weather", key="Database")
     
     if st.button("Connect"):
         with st.spinner("Connecting to database..."):
